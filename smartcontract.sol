@@ -1,8 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
-
-pragma solidity >=0.4.22 <0.7.0;
-
-contract NGObid {
+{
     // Parameters of the auction. Times are either
     // absolute unix timestamps (seconds since 1970-01-01)
     // or time periods in seconds.
@@ -13,18 +9,20 @@ contract NGObid {
     }
     
     
-    address public chairperson;
+    address payable public chairperson;
 
     mapping(address => Bidder) public bidders;
 
     
     
-    address payable public beneficiary;
+    
     uint public auctionEndTime;
 
     // Current state of the auction.
-    address public lowestBidder;
-    uint public lowestBid;
+    address payable public lowestBidder;
+    uint public lowestBid = 20;
+    uint public deliveryCode;
+    bool public productReceived;
 
 
 
@@ -35,6 +33,7 @@ contract NGObid {
     // Events that will be emitted on changes.
     event LowestBidDecreased(address bidder, uint amount);
     event AuctionEnded(address winner, uint amount);
+    event DeliveryCodeProvided (address lowestBidder, uint deliveryCode);
 
     // The following is a so-called natspec comment,
     // recognizable by the three slashes.
@@ -46,10 +45,8 @@ contract NGObid {
     /// beneficiary address `_beneficiary`.
     constructor(
         uint _biddingTime,
-        address payable _beneficiary,
-        address _chairperson
-    ) public {
-        beneficiary = _beneficiary;
+        address  payable _chairperson
+    ) public payable {
         chairperson = _chairperson;
         auctionEndTime = now + _biddingTime;
     }
@@ -72,8 +69,7 @@ contract NGObid {
     }    
     
     
-    
-    function bid() public payable {
+    function bid(uint user_bid) public payable {
         Bidder storage sender = bidders[msg.sender];
         require(!sender.bid, "Already bid.");
         sender.bid = true;
@@ -89,17 +85,18 @@ contract NGObid {
             now <= auctionEndTime,
             "Auction already ended."
         );
+        
 
-        // If the bid is not higher, send the
-        // money back.
+        // If the bid is not lower, don't accept
+        // the bid.
         require(
-            msg.value <= lowestBid,
+            user_bid <= lowestBid,
             "There already is a lower bid."
         );
 
         lowestBidder = msg.sender;
-        lowestBid = msg.value;
-        emit LowestBidDecreased(msg.sender, msg.value);
+        lowestBid = user_bid;
+        emit LowestBidDecreased(msg.sender, user_bid);
     }
 
 
@@ -128,7 +125,44 @@ contract NGObid {
         ended = true;
         emit AuctionEnded(lowestBidder, lowestBid);
 
-        // 3. Interaction
-        beneficiary.transfer(lowestBid);
+
     }
+    
+    function provideDeliveryCode(uint deliveryCode1) public {
+        
+        require(
+            msg.sender == lowestBidder,
+            "Only the winning bidder can send the product"
+            );
+            
+        deliveryCode = deliveryCode1;
+        emit DeliveryCodeProvided(lowestBidder,deliveryCode);    
+        
+    }
+    
+    function productDelivered(uint chairpersoninput) public payable {
+        
+        require(
+            msg.sender == chairperson,
+            "Only chairperson can approve payment upon delivery."
+        );
+        
+        require (
+            deliveryCode == chairpersoninput,
+            "Product code does not equal the one provided"
+        );
+        
+        
+        productReceived = true;
+                
+        
+    }
+    
+    function deliverPayment() public payable {
+        
+        lowestBidder.transfer(lowestBid);
+        chairperson.transfer(address(this).balance);
+    }
+    
+    
 }
