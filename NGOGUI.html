@@ -107,6 +107,7 @@
         var SimpleAuction = eth.contract(SimpleAuctionABI, SimpleAuctionBytecode, { from: accounts[0], gas: 3000000 });
         var simpleAuctionInstance;
         var beneficiary = accounts[0];
+        var chairperson = accounts[0];
         var biddingTime = 300; // 15 thousand seconds
 
         // poll for new auction data
