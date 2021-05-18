@@ -4,12 +4,12 @@
     // or time periods in seconds.
     
     struct Bidder {
-        bool bid;  // if true, that person already voted
-        uint bid_amount;   // index of the voted proposal
+        bool bid;  // if true, that person already bid
+        uint bid_amount;   // the bid amount associated with a particular bidder
     }
     
     
-    address payable public chairperson;
+    address payable public chairperson; //this is the person who has the authority to grant bidding access to bidders and release funds upon delivery of product
 
     mapping(address => Bidder) public bidders;
 
@@ -20,7 +20,7 @@
 
     // Current state of the auction.
     address payable public lowestBidder;
-    uint public lowestBid = 20;
+    uint public lowestBid = 20; //set the minimum bid to 20 otherwise it would be zero. need a better way to do this
     uint public deliveryCode;
     bool public productReceived;
 
@@ -35,14 +35,8 @@
     event AuctionEnded(address winner, uint amount);
     event DeliveryCodeProvided (address lowestBidder, uint deliveryCode);
 
-    // The following is a so-called natspec comment,
-    // recognizable by the three slashes.
-    // It will be shown when the user is asked to
-    // confirm a transaction.
-
-    /// Create a simple auction with `_biddingTime`
-    /// seconds bidding time on behalf of the
-    /// beneficiary address `_beneficiary`.
+ /// this initiates the contract with
+ /// _biddingTime and assigning the chairperson
     constructor(
         uint _biddingTime,
         address  payable _chairperson
@@ -51,10 +45,6 @@
         auctionEndTime = now + _biddingTime;
     }
 
-    /// Bid on the auction with the value sent
-    /// together with this transaction.
-    /// The value will only be refunded if the
-    /// auction is not won.
     
     function giveRightToBid(address bidder) public {
         require(
@@ -73,14 +63,7 @@
         Bidder storage sender = bidders[msg.sender];
         require(!sender.bid, "Already bid.");
         sender.bid = true;
-        // No arguments are necessary, all
-        // information is already part of
-        // the transaction. The keyword payable
-        // is required for the function to
-        // be able to receive Ether.
 
-        // Revert the call if the bidding
-        // period is over.
         require(
             now <= auctionEndTime,
             "Auction already ended."
@@ -101,8 +84,7 @@
 
 
 
-    /// End the auction and send the highest bid
-    /// to the beneficiary.
+    /// End the auction and send the and announce the winning bid
     function auctionEnd() public {
         // It is a good guideline to structure functions that interact
         // with other contracts (i.e. they call functions or send Ether)
@@ -128,6 +110,7 @@
 
     }
     
+    ///the winning bidder will provide a delivery code
     function provideDeliveryCode(uint deliveryCode1) public {
         
         require(
@@ -140,6 +123,8 @@
         
     }
     
+    /// the chairperson will check that the delivered product matches the delivery code
+    /// an updated smart contract will also distribute the funds within this function. for now seperate functions
     function productDelivered(uint chairpersoninput) public payable {
         
         require(
